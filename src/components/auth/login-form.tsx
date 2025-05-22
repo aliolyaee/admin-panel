@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -20,9 +21,10 @@ import { useToast } from "@/hooks/use-toast";
 import { login } from "@/lib/auth";
 import { LogIn } from "lucide-react";
 
+// API expects 'username', form uses 'email'. We'll use email as username.
 const formSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  email: z.string().email({ message: "Invalid email address." }), // This will be sent as 'username'
+  password: z.string().min(1, { message: "Password is required." }), // API spec doesn't state min length for login
 });
 
 export function LoginForm() {
@@ -41,6 +43,7 @@ export function LoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
+      // The login function in auth.ts handles mapping 'email' to 'username' for the API
       await login(values.email, values.password);
       toast({
         title: "Login Successful",
@@ -76,7 +79,7 @@ export function LoginForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>Email (as Username)</FormLabel>
                   <FormControl>
                     <Input type="email" placeholder="admin@example.com" {...field} />
                   </FormControl>
