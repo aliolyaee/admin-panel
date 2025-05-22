@@ -23,7 +23,8 @@ import { LogIn } from "lucide-react";
 
 // API expects 'username', form uses 'email'. We'll use email as username.
 const formSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }), // This will be sent as 'username'
+  // email: z.string().email({ message: "Invalid email address." }), // This will be sent as 'username'
+  email: z.string().min(1, { message: "username is required." }), // This will be sent as 'username'
   password: z.string().min(1, { message: "Password is required." }), // API spec doesn't state min length for login
 });
 
@@ -81,7 +82,7 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Email (as Username)</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="admin@example.com" {...field} />
+                    <Input type="text" placeholder="admin@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
