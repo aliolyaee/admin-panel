@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Edit3, Trash2, CheckCircle, XCircle, Clock, Tool, ImageOff } from "lucide-react"; // Added ImageOff
+import { MoreHorizontal, Edit3, Trash2, CheckCircle, XCircle, Clock, Wrench, ImageOff } from "lucide-react"; // Added ImageOff
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,7 +37,7 @@ const statusConfig: { [key: string]: { label: string; icon: React.ElementType; c
   available: { label: "Available", icon: CheckCircle, color: "text-green-600 dark:text-green-400" },
   occupied: { label: "Occupied", icon: XCircle, color: "text-red-600 dark:text-red-400" },
   reserved: { label: "Reserved", icon: Clock, color: "text-yellow-600 dark:text-yellow-400" },
-  maintenance: { label: "Maintenance", icon: Tool, color: "text-gray-500 dark:text-gray-400" },
+  maintenance: { label: "Maintenance", icon: Wrench, color: "text-gray-500 dark:text-gray-400" },
 };
 
 

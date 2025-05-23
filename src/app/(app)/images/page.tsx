@@ -32,7 +32,8 @@ export default function ImagesPage() {
     try {
       // API for GET /image does not specify search query params
       const response = await axiosInstance.get("/image");
-      setAllImages(response.data || []);
+      // setAllImages(response.data || []);
+      setAllImages(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error("Failed to fetch images:", error);
       toast({ title: "Error Fetching Images", description: "Could not load image data.", variant: "destructive" });
