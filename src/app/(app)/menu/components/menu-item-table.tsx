@@ -1,8 +1,9 @@
+
 "use client";
 
 import * as React from "react";
 import type { MenuItem } from "@/types";
-import Image from "next/image";
+import NextImage from "next/image"; // Renamed to avoid conflict
 import {
   Table,
   TableBody,
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Edit3, Trash2, ImageOff } from "lucide-react";
+import { MoreHorizontal, Edit3, Trash2, ImageOff, CheckCircle, XCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,7 +51,7 @@ export function MenuItemTable({ menuItems, onEdit, onDelete, isLoading }: MenuIt
       setSelectedItemId(null);
     }
   };
-  
+
   if (isLoading && menuItems.length === 0) {
     return (
       <div className="rounded-md border shadow-sm">
@@ -58,9 +59,10 @@ export function MenuItemTable({ menuItems, onEdit, onDelete, isLoading }: MenuIt
           <TableHeader>
             <TableRow>
               <TableHead className="w-[80px]">Image</TableHead>
-              <TableHead>Name</TableHead>
+              <TableHead>Title</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead className="w-[100px]">Price</TableHead>
+              <TableHead className="w-[100px]">Fee</TableHead>
+              <TableHead className="w-[100px] text-center">Available</TableHead>
               <TableHead className="w-[180px]">Created At</TableHead>
               <TableHead className="w-[80px] text-right">Actions</TableHead>
             </TableRow>
@@ -72,6 +74,7 @@ export function MenuItemTable({ menuItems, onEdit, onDelete, isLoading }: MenuIt
                 <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
                 <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                 <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
                 <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                 <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto rounded-md" /></TableCell>
               </TableRow>
@@ -89,9 +92,10 @@ export function MenuItemTable({ menuItems, onEdit, onDelete, isLoading }: MenuIt
           <TableHeader>
             <TableRow>
               <TableHead className="w-[80px]">Image</TableHead>
-              <TableHead className="min-w-[200px]">Name</TableHead>
+              <TableHead className="min-w-[200px]">Title</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead className="w-[100px]">Price</TableHead>
+              <TableHead className="w-[100px]">Fee</TableHead>
+              <TableHead className="w-[100px] text-center">Available</TableHead>
               <TableHead className="w-[180px]">Created At</TableHead>
               <TableHead className="w-[80px] text-right">Actions</TableHead>
             </TableRow>
@@ -100,10 +104,10 @@ export function MenuItemTable({ menuItems, onEdit, onDelete, isLoading }: MenuIt
             {menuItems.map((item) => (
               <TableRow key={item.id} className="hover:bg-muted/50">
                 <TableCell>
-                  {item.imageUrl ? (
-                    <Image
-                      src={item.imageUrl}
-                      alt={item.name}
+                  {item.image ? (
+                    <NextImage
+                      src={item.image}
+                      alt={item.title}
                       width={48}
                       height={48}
                       className="rounded-md object-cover aspect-square"
@@ -116,14 +120,21 @@ export function MenuItemTable({ menuItems, onEdit, onDelete, isLoading }: MenuIt
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className="font-medium">{item.name}</div>
+                  <div className="font-medium">{item.title}</div>
                   <div className="text-xs text-muted-foreground truncate max-w-xs">{item.description}</div>
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary">{item.categoryName || "Uncategorized"}</Badge>
                 </TableCell>
-                <TableCell>{formatCurrency(item.price)}</TableCell>
-                <TableCell>{formatDate(item.createdAt, 'MMM d, yyyy')}</TableCell>
+                <TableCell>{formatCurrency(item.fee)}</TableCell>
+                <TableCell className="text-center">
+                  {item.available ? (
+                    <CheckCircle className="h-5 w-5 text-green-500 mx-auto" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-500 mx-auto" />
+                  )}
+                </TableCell>
+                <TableCell>{item.createdAt ? formatDate(item.createdAt, 'MMM d, yyyy') : 'N/A'}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -30,78 +31,90 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch"; // Added Switch
 import type { MenuItem, Category } from "@/types";
 
 interface MenuItemFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSubmit: (data: Omit<MenuItem, 'id' | 'createdAt' | 'categoryName'> | MenuItem) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>; // Accepts API payload structure
   menuItem?: MenuItem | null;
   categories: Category[];
 }
 
+// Schema based on API fields: title, description, fee, categoryId, image (optional), available
 const formSchema = z.object({
-  name: z.string().min(2, { message: "Item name must be at least 2 characters." }),
+  title: z.string().min(2, { message: "Item title must be at least 2 characters." }),
   description: z.string().min(10, { message: "Description must be at least 10 characters." }),
-  price: z.coerce.number().min(0.01, { message: "Price must be a positive value." }),
+  fee: z.coerce.number().min(0.01, { message: "Fee must be a positive value." }),
   categoryId: z.string().min(1, { message: "Please select a category." }),
-  imageUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
-  tags: z.string().optional().transform(val => val ? val.split(',').map(tag => tag.trim()).filter(Boolean) : []),
+  image: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  available: z.boolean().default(true),
 });
+
+type MenuItemFormValues = z.infer<typeof formSchema>;
 
 export function MenuItemFormDialog({ isOpen, onOpenChange, onSubmit, menuItem, categories }: MenuItemFormDialogProps) {
   const isEditing = !!menuItem;
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<MenuItemFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      title: "",
       description: "",
-      price: 0,
+      fee: 0,
       categoryId: "",
-      imageUrl: "",
-      tags: [],
+      image: "",
+      available: true,
     },
   });
-  
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
-    if (menuItem) {
-      form.reset({
-        name: menuItem.name,
-        description: menuItem.description,
-        price: menuItem.price,
-        categoryId: menuItem.categoryId,
-        imageUrl: menuItem.imageUrl || "",
-        tags: menuItem.tags ? menuItem.tags.join(', ') : '', // For display in input
-      });
-    } else {
-      form.reset({
-        name: "",
-        description: "",
-        price: 0,
-        categoryId: "",
-        imageUrl: "",
-        tags: [],
-      });
+    if (isOpen) { // Reset form only when dialog is opened or menuItem changes
+      if (menuItem) {
+        form.reset({
+          title: menuItem.title,
+          description: menuItem.description,
+          fee: menuItem.fee,
+          categoryId: menuItem.categoryId,
+          image: menuItem.image || "",
+          available: menuItem.available,
+        });
+      } else {
+        form.reset({
+          title: "",
+          description: "",
+          fee: 0,
+          categoryId: "",
+          image: "",
+          available: true,
+        });
+      }
     }
   }, [menuItem, form, isOpen]);
 
-  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleFormSubmit = async (values: MenuItemFormValues) => {
     setIsSubmitting(true);
-    const submissionData: any = { ...values };
+    // Construct payload for API (application/x-www-form-urlencoded)
+    // This will be handled by the parent component (MenuPage)
+    const payload = {
+      ...values,
+      available: values.available ? 'true' : 'false', // API expects string for boolean in form-urlencoded
+    };
     if (isEditing && menuItem) {
-      submissionData.id = menuItem.id;
-      submissionData.createdAt = menuItem.createdAt;
+      (payload as any).id = menuItem.id;
     }
-    await onSubmit(submissionData);
+
+    await onSubmit(payload);
     setIsSubmitting(false);
+    // onOpenChange(false); // Parent will handle closing
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      if(!open) form.reset();
+      if (!open && !isSubmitting) form.reset(); // Reset if closing and not submitting
       onOpenChange(open)
     }}>
       <DialogContent className="sm:max-w-lg">
@@ -112,13 +125,13 @@ export function MenuItemFormDialog({ isOpen, onOpenChange, onSubmit, menuItem, c
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-3 py-2 max-h-[70vh] overflow-y-auto pr-2">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-3 py-2 max-h-[70vh] overflow-y-auto pr-2">
             <FormField
               control={form.control}
-              name="name"
+              name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Item Name</FormLabel>
+                  <FormLabel>Item Title</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Spaghetti Carbonara" {...field} />
                   </FormControl>
@@ -142,10 +155,10 @@ export function MenuItemFormDialog({ isOpen, onOpenChange, onSubmit, menuItem, c
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <FormField
                 control={form.control}
-                name="price"
+                name="fee"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price</FormLabel>
+                    <FormLabel>Fee (Price)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="e.g., 15.99" {...field} />
                     </FormControl>
@@ -159,7 +172,7 @@ export function MenuItemFormDialog({ isOpen, onOpenChange, onSubmit, menuItem, c
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a category" />
@@ -180,7 +193,7 @@ export function MenuItemFormDialog({ isOpen, onOpenChange, onSubmit, menuItem, c
             </div>
             <FormField
               control={form.control}
-              name="imageUrl"
+              name="image"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Image URL (Optional)</FormLabel>
@@ -193,14 +206,19 @@ export function MenuItemFormDialog({ isOpen, onOpenChange, onSubmit, menuItem, c
             />
             <FormField
               control={form.control}
-              name="tags"
+              name="available"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tags (Optional, comma-separated)</FormLabel>
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Available</FormLabel>
+                    <FormMessage />
+                  </div>
                   <FormControl>
-                    <Input placeholder="e.g., spicy, vegetarian, popular" {...field} />
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />

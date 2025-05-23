@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -7,7 +8,7 @@ import * as z from "zod";
 import type { Category } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+// import { Textarea } from "@/components/ui/textarea"; // Removed as description is not in API
 import {
   Table,
   TableBody,
@@ -23,7 +24,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -33,7 +33,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { MoreHorizontal, Edit3, Trash2, PlusCircle, Tag } from "lucide-react";
+import { MoreHorizontal, Edit3, Trash2, PlusCircle, Tag, Image as ImageIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,56 +42,66 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DeleteConfirmationDialog } from "@/components/shared/delete-confirmation-dialog";
-import { generateMockId, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import NextImage from "next/image";
+
 
 interface CategoryManagementProps {
   categories: Category[];
-  onAddCategory: (category: Category) => void;
-  onUpdateCategory: (category: Category) => void;
-  onDeleteCategory: (categoryId: string) => void;
+  onAddCategory: (categoryPayload: any) => Promise<void>;
+  onUpdateCategory: (categoryPayload: any) => Promise<void>;
+  onDeleteCategory: (categoryId: string) => Promise<void>;
+  isLoading?: boolean; // Added isLoading prop
 }
 
+// Schema based on API fields: name, icon (optional URL)
 const categoryFormSchema = z.object({
   name: z.string().min(2, { message: "Category name must be at least 2 characters." }),
-  description: z.string().optional(),
+  icon: z.string().url({ message: "Please enter a valid URL for the icon." }).optional().or(z.literal('')),
 });
+
+type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
 export function CategoryManagement({
   categories,
   onAddCategory,
   onUpdateCategory,
   onDeleteCategory,
+  isLoading = false, // Default isLoading to false
 }: CategoryManagementProps) {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingCategory, setEditingCategory] = React.useState<Category | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [deletingCategoryId, setDeletingCategoryId] = React.useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false); // For form submission
-  const [isDeleting, setIsDeletingState] = React.useState(false); // For delete confirmation
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isDeleting, setIsDeletingState] = React.useState(false);
 
-  const form = useForm<z.infer<typeof categoryFormSchema>>({
+  const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
-    defaultValues: { name: "", description: "" },
+    defaultValues: { name: "", icon: "" },
   });
 
   React.useEffect(() => {
-    if (editingCategory) {
-      form.reset({ name: editingCategory.name, description: editingCategory.description || "" });
-    } else {
-      form.reset({ name: "", description: "" });
+    if (isFormOpen) { // Reset form only when dialog opens
+      if (editingCategory) {
+        form.reset({ name: editingCategory.name, icon: editingCategory.icon || "" });
+      } else {
+        form.reset({ name: "", icon: "" });
+      }
     }
   }, [editingCategory, form, isFormOpen]);
 
-  const handleFormSubmit = async (values: z.infer<typeof categoryFormSchema>) => {
+  const handleFormSubmit = async (values: CategoryFormValues) => {
     setIsSubmitting(true);
+    const payload = { ...values };
     if (editingCategory) {
-      onUpdateCategory({ ...editingCategory, ...values });
+      await onUpdateCategory({ ...payload, id: editingCategory.id });
     } else {
-      onAddCategory({ id: generateMockId(), createdAt: new Date().toISOString(), ...values });
+      await onAddCategory(payload);
     }
     setIsSubmitting(false);
-    setIsFormOpen(false);
+    // setIsFormOpen(false); // Parent (MenuPage) will handle closing on success
   };
 
   const openEditDialog = (category: Category) => {
@@ -109,17 +119,15 @@ export function CategoryManagement({
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deletingCategoryId) {
       setIsDeletingState(true);
-      onDeleteCategory(deletingCategoryId); // Assuming this might be async in future
+      await onDeleteCategory(deletingCategoryId);
       setIsDeletingState(false);
       setIsDeleteDialogOpen(false);
       setDeletingCategoryId(null);
     }
   };
-  
-  const isLoading = false; // Categories are managed locally, no async loading state for now
 
   return (
     <Card className="shadow-lg">
@@ -135,11 +143,14 @@ export function CategoryManagement({
       <CardContent>
         {isLoading && categories.length === 0 ? (
           <div className="space-y-2">
-             {[...Array(3)].map((_, i) => (
+            {[...Array(3)].map((_, i) => (
               <div key={i} className="flex items-center justify-between p-3 bg-muted/20 rounded-md">
-                <div className="space-y-1">
-                  <Skeleton className="h-5 w-24" />
-                  <Skeleton className="h-4 w-40" />
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-8 w-8 rounded-md" />
+                  <div className="space-y-1">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
                 </div>
                 <Skeleton className="h-8 w-8 rounded-md" />
               </div>
@@ -156,8 +167,8 @@ export function CategoryManagement({
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[60px]">Icon</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
                   <TableHead>Created At</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -165,12 +176,16 @@ export function CategoryManagement({
               <TableBody>
                 {categories.map((category) => (
                   <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
-                      {category.description || "-"}
+                    <TableCell>
+                      {category.icon ? (
+                        <NextImage src={category.icon} alt={category.name} width={24} height={24} className="rounded-sm object-contain" data-ai-hint="category icon" />
+                      ) : (
+                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      )}
                     </TableCell>
+                    <TableCell className="font-medium">{category.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(category.createdAt, 'MMM d, yyyy')}
+                      {category.createdAt ? formatDate(category.createdAt, 'MMM d, yyyy') : 'N/A'}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -196,10 +211,9 @@ export function CategoryManagement({
           </div>
         )}
 
-        {/* Add/Edit Category Dialog */}
         <Dialog open={isFormOpen} onOpenChange={(open) => {
-            if(!open) form.reset();
-            setIsFormOpen(open);
+          if (!open && !isSubmitting) form.reset();
+          setIsFormOpen(open);
         }}>
           <DialogContent>
             <DialogHeader>
@@ -225,12 +239,12 @@ export function CategoryManagement({
                 />
                 <FormField
                   control={form.control}
-                  name="description"
+                  name="icon"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Description (Optional)</FormLabel>
+                      <FormLabel>Icon URL (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Briefly describe the category" {...field} />
+                        <Input type="url" placeholder="https://example.com/icon.png" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -247,7 +261,6 @@ export function CategoryManagement({
           </DialogContent>
         </Dialog>
 
-        {/* Delete Confirmation Dialog */}
         <DeleteConfirmationDialog
           isOpen={isDeleteDialogOpen}
           onOpenChange={setIsDeleteDialogOpen}
