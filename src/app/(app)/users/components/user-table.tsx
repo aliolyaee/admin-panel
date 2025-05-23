@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -43,28 +44,31 @@ export function UserTable({ users, onEdit, onDelete, isLoading }: UserTableProps
   const confirmDelete = async () => {
     if (selectedUserId) {
       setIsDeleting(true);
-      await onDelete(selectedUserId);
-      setIsDeleting(false);
-      setIsDeleteDialogOpen(false);
-      setSelectedUserId(null);
+      try {
+        await onDelete(selectedUserId);
+      } finally {
+        setIsDeleting(false);
+        setIsDeleteDialogOpen(false);
+        setSelectedUserId(null);
+      }
     }
   };
-  
-  if (isLoading && users.length === 0) {
+
+  if (isLoading) { // Show skeleton when isLoading is true
     return (
       <div className="rounded-md border shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-[250px]">Name</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>Username (Email)</TableHead>
               <TableHead className="w-[100px]">Role</TableHead>
               <TableHead className="w-[180px]">Created At</TableHead>
               <TableHead className="w-[80px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {[...Array(5)].map((_, i) => (
+            {[...Array(5)].map((_, i) => ( // Assuming ITEMS_PER_PAGE is 5 for skeleton
               <TableRow key={i}>
                 <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
                 <TableCell><Skeleton className="h-5 w-full" /></TableCell>
@@ -79,6 +83,10 @@ export function UserTable({ users, onEdit, onDelete, isLoading }: UserTableProps
     );
   }
 
+  if (users.length === 0 && !isLoading) { // Handled by parent component
+    return null;
+  }
+
 
   return (
     <>
@@ -86,8 +94,8 @@ export function UserTable({ users, onEdit, onDelete, isLoading }: UserTableProps
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[250px]">Name</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead className="w-[250px]">Full Name</TableHead>
+              <TableHead>Username (Email)</TableHead>
               <TableHead className="w-[100px]">Role</TableHead>
               <TableHead className="w-[180px]">Created At</TableHead>
               <TableHead className="w-[80px] text-right">Actions</TableHead>
@@ -96,15 +104,15 @@ export function UserTable({ users, onEdit, onDelete, isLoading }: UserTableProps
           <TableBody>
             {users.map((user) => (
               <TableRow key={user.id} className="hover:bg-muted/50">
-                <TableCell className="font-medium">{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
+                <TableCell className="font-medium">{user.fullName}</TableCell>
+                <TableCell>{user.username}</TableCell>
                 <TableCell>
                   <Badge variant={user.role === "admin" ? "default" : "secondary"} className="capitalize">
                     {user.role === "admin" ? <ShieldCheck className="mr-1 h-3 w-3" /> : <UserCircle className="mr-1 h-3 w-3" />}
                     {user.role}
                   </Badge>
                 </TableCell>
-                <TableCell>{formatDate(user.createdAt, 'MMM d, yyyy')}</TableCell>
+                <TableCell>{user.createdAt ? formatDate(user.createdAt, 'MMM d, yyyy') : 'N/A'}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

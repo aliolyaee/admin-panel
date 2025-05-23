@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -22,77 +23,82 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea"; // Added for description
 import type { Table } from "@/types";
 
 interface TableFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSubmit: (data: Omit<Table, 'id' | 'createdAt'> | Table) => Promise<void>;
+  onSubmit: (data: Omit<Table, 'id' | 'createdAt' | 'status'> | (Table & { id: string })) => Promise<void>;
   table?: Table | null;
 }
 
+// Schema matches API: name, description, capacity, photo. Status is not part of POST/PATCH.
 const formSchema = z.object({
   name: z.string().min(1, { message: "Table name cannot be empty." }),
+  description: z.string().optional(),
   capacity: z.coerce.number().min(1, { message: "Capacity must be at least 1." }),
-  status: z.enum(["available", "occupied", "reserved", "maintenance"]),
+  photo: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
 });
+
+type TableFormValues = z.infer<typeof formSchema>;
 
 export function TableFormDialog({ isOpen, onOpenChange, onSubmit, table }: TableFormDialogProps) {
   const isEditing = !!table;
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<TableFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      description: "",
       capacity: 1,
-      status: "available",
+      photo: "",
     },
   });
-  
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
-    if (table) {
-      form.reset({
-        name: table.name,
-        capacity: table.capacity,
-        status: table.status,
-      });
-    } else {
-      form.reset({
-        name: "",
-        capacity: 1,
-        status: "available",
-      });
+    if (isOpen) {
+      if (table) {
+        form.reset({
+          name: table.name,
+          description: table.description || "",
+          capacity: table.capacity,
+          photo: table.photo || "",
+        });
+      } else {
+        form.reset({
+          name: "",
+          description: "",
+          capacity: 1,
+          photo: "",
+        });
+      }
     }
   }, [table, form, isOpen]);
 
-  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleFormSubmit = async (values: TableFormValues) => {
     setIsSubmitting(true);
     const submissionData: any = { ...values };
     if (isEditing && table) {
       submissionData.id = table.id;
-      submissionData.createdAt = table.createdAt;
+      // API doesn't take createdAt or status in PATCH body.
+      // submissionData.createdAt = table.createdAt; 
     }
     await onSubmit(submissionData);
+    // Parent (TablesPage) will handle closing dialog and resetting state on successful submission
     setIsSubmitting(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        form.reset();
+      if (!open && !isSubmitting) { // only reset if not submitting
+        form.reset({ name: "", description: "", capacity: 1, photo: "" });
       }
       onOpenChange(open);
     }}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit Table" : "Add New Table"}</DialogTitle>
           <DialogDescription>
@@ -100,7 +106,7 @@ export function TableFormDialog({ isOpen, onOpenChange, onSubmit, table }: Table
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-2">
             <FormField
               control={form.control}
               name="name"
@@ -109,6 +115,19 @@ export function TableFormDialog({ isOpen, onOpenChange, onSubmit, table }: Table
                   <FormLabel>Table Name / Identifier</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Table 5, Bar Seat 2" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="e.g., Near window, cozy corner" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -129,28 +148,19 @@ export function TableFormDialog({ isOpen, onOpenChange, onSubmit, table }: Table
             />
             <FormField
               control={form.control}
-              name="status"
+              name="photo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="occupied">Occupied</SelectItem>
-                      <SelectItem value="reserved">Reserved</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Photo URL (Optional)</FormLabel>
+                  <FormControl>
+                    <Input type="url" placeholder="https://example.com/table.jpg" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <DialogFooter>
+            {/* Status field removed as it's not part of POST/PATCH API for tables */}
+            <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Cancel
               </Button>

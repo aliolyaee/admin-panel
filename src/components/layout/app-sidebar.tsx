@@ -21,7 +21,7 @@ import {
   BookOpenText,
   Image as ImageIcon,
   LogOut,
-  Restaurant, // Placeholder for App Logo/Name
+  ChefHat, // Placeholder for App Logo/Name
 } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { useRouter } from "next/navigation";
@@ -50,7 +50,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
     router.push("/login");
     router.refresh();
   };
-  
+
   const getUserInitials = (name: string) => {
     if (!name) return 'U';
     const parts = name.split(' ');
@@ -64,7 +64,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
     <Sidebar collapsible="icon" variant="sidebar" className="border-r">
       <SidebarHeader className="p-4 flex items-center gap-2 justify-between">
         <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
-          <Restaurant className="h-8 w-8 text-primary" />
+          <ChefHat className="h-8 w-8 text-primary" />
           <h1 className="text-xl font-semibold text-sidebar-foreground">Reservista</h1>
         </div>
         <SidebarTrigger className="md:hidden" />
@@ -88,16 +88,16 @@ export default function AppSidebar({ user }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-4 border-t border-sidebar-border">
-         <div className="flex items-center gap-3 group-data-[collapsible=icon]:hidden">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={`https://placehold.co/40x40.png?text=${getUserInitials(user?.name || 'User')}`} alt={user?.name} data-ai-hint="avatar profile" />
-              <AvatarFallback>{getUserInitials(user?.name || 'User')}</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-sidebar-foreground">{user?.name}</span>
-              <span className="text-xs text-sidebar-foreground/70">{user?.email}</span>
-            </div>
+        <div className="flex items-center gap-3 group-data-[collapsible=icon]:hidden">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={`https://placehold.co/40x40.png?text=${getUserInitials(user?.name || 'User')}`} alt={user?.name} data-ai-hint="avatar profile" />
+            <AvatarFallback>{getUserInitials(user?.name || 'User')}</AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-sidebar-foreground">{user?.name}</span>
+            <span className="text-xs text-sidebar-foreground/70">{user?.email}</span>
           </div>
+        </div>
         <Button
           variant="ghost"
           onClick={handleLogout}

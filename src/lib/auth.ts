@@ -11,15 +11,27 @@ export const login = async (email?: string, password?: string): Promise<User> =>
     throw new Error('Email and password are required.');
   }
 
-  const formData = new FormData();
-  formData.append('username', email); // API expects 'username'
-  formData.append('password', password);
+  // const formData = new FormData();
+  // formData.append('username', email); // API expects 'username'
+  // formData.append('password', password);
+
+  const data = {
+    username: email,
+    password: password,
+  };
 
   try {
-    const response = await axios.post<LoginResponse>(`${process.env.NEXT_PUBLIC_API_URL}/user/login`, formData, {
+    // const response = await axios.post<LoginResponse>(`${process.env.NEXT_PUBLIC_API_URL}/user/login`, formData, {
+    //   headers: {
+    //     'Content-Type': 'multipart/form-data',
+    //   },
+    // });
+
+    const response = await axios.post<LoginResponse>(`${process.env.NEXT_PUBLIC_API_URL}/user/login`, data, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
       },
+      withCredentials: true,
     });
 
     const { accessToken, refreshToken, user: userInfoFromLogin } = response.data;

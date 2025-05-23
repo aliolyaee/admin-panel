@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -29,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { User } from "@/types";
+import type { User } from "@/types"; // Ensure User type fields match: fullName, username, role
 
 interface UserFormDialogProps {
   isOpen: boolean;
@@ -38,75 +39,88 @@ interface UserFormDialogProps {
   user?: User | null; // For editing
 }
 
-const formSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Invalid email address." }),
+// Schema for form fields. 'name' will map to 'fullName', 'email' to 'username'.
+const baseFormSchema = z.object({
+  name: z.string().min(2, { message: "Full name must be at least 2 characters." }), // Maps to fullName
+  email: z.string().email({ message: "Invalid email address." }), // Maps to username
   role: z.enum(["admin", "staff"]),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }).optional(),
+  password: z.string().optional(),
 });
 
-// If editing, password is not required to change
-const editFormSchema = formSchema.extend({
+const createUserSchema = baseFormSchema.extend({
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+});
+
+const editUserSchema = baseFormSchema.extend({
   password: z.string().min(6, { message: "Password must be at least 6 characters." }).optional().or(z.literal('')),
 });
 
 
 export function UserFormDialog({ isOpen, onOpenChange, onSubmit, user }: UserFormDialogProps) {
   const isEditing = !!user;
-  const currentFormSchema = isEditing ? editFormSchema : formSchema;
+  const currentFormSchema = isEditing ? editUserSchema : createUserSchema;
 
   const form = useForm<z.infer<typeof currentFormSchema>>({
     resolver: zodResolver(currentFormSchema),
     defaultValues: {
-      name: "",
-      email: "",
+      name: "", // Will hold fullName
+      email: "", // Will hold username
       role: "staff",
       password: "",
     },
   });
-  
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
-    if (user) {
-      form.reset({
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        password: "", // Don't prefill password for editing
-      });
-    } else {
-      form.reset({
-        name: "",
-        email: "",
-        role: "staff",
-        password: "",
-      });
-    }
-  }, [user, form, isOpen]); // Added isOpen to reset form when dialog opens for new user
-
-  const handleSubmit = async (values: z.infer<typeof currentFormSchema>) => {
-    setIsSubmitting(true);
-    const submissionData: any = { ...values };
-    if (isEditing && user) {
-      submissionData.id = user.id;
-      submissionData.createdAt = user.createdAt; // Preserve original creation date
-      if (!values.password) { // If password field is empty during edit, don't update it
-        delete submissionData.password;
+    if (isOpen) { // Only reset form when dialog is opened
+      if (user) {
+        form.reset({
+          name: user.fullName, // Map from UserType.fullName
+          email: user.username, // Map from UserType.username
+          role: user.role as "admin" | "staff", // Cast if UserType.role is string
+          password: "",
+        });
+      } else {
+        form.reset({
+          name: "",
+          email: "",
+          role: "staff",
+          password: "",
+        });
       }
     }
-    
-    // For new users, if password is not provided, it's an error by schema unless optionalised further
-    // The current schema requires password for new user.
+  }, [user, form, isOpen]);
+
+  const handleFormSubmit = async (values: z.infer<typeof currentFormSchema>) => {
+    setIsSubmitting(true);
+    // Map form values to UserType structure before calling onSubmit
+    const submissionData: any = {
+      fullName: values.name, // Map 'name' from form to 'fullName'
+      username: values.email, // Map 'email' from form to 'username'
+      role: values.role,
+    };
+
+    if (values.password) {
+      submissionData.password = values.password;
+    }
+
+    if (isEditing && user) {
+      submissionData.id = user.id;
+      submissionData.createdAt = user.createdAt;
+    }
 
     await onSubmit(submissionData);
+    // onSubmit is expected to handle closing the dialog on success
+    // and error display itself.
     setIsSubmitting(false);
+    // Do not close dialog here; let parent handle it based on API response
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) { // Reset form if dialog is closed without submitting
-        form.reset();
+      if (!open) {
+        form.reset({ name: "", email: "", role: "staff", password: "" }); // Reset form if dialog is closed
       }
       onOpenChange(open);
     }}>
@@ -118,10 +132,10 @@ export function UserFormDialog({ isOpen, onOpenChange, onSubmit, user }: UserFor
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
             <FormField
               control={form.control}
-              name="name"
+              name="name" // This is for 'fullName'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
@@ -134,10 +148,10 @@ export function UserFormDialog({ isOpen, onOpenChange, onSubmit, user }: UserFor
             />
             <FormField
               control={form.control}
-              name="email"
+              name="email" // This is for 'username'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email Address</FormLabel>
+                  <FormLabel>Username (Email)</FormLabel>
                   <FormControl>
                     <Input type="email" placeholder="user@example.com" {...field} />
                   </FormControl>
