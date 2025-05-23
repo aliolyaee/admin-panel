@@ -1,8 +1,9 @@
+
 "use client";
 
 import * as React from "react";
 import type { ManagedImage } from "@/types";
-import Image from "next/image";
+import NextImage from "next/image"; // Renamed to avoid conflict
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Edit3, Trash2, Download } from "lucide-react";
@@ -68,9 +69,9 @@ export function ImageGallery({ images, onEdit, onDelete, isLoading }: ImageGalle
         {images.map((image) => (
           <Card key={image.id} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 group">
             <div className="aspect-[4/3] w-full relative bg-muted overflow-hidden">
-              <Image
-                src={image.url}
-                alt={image.altText || image.filename || "Managed image"}
+              <NextImage
+                src={image.image} // Use image.image (API field)
+                alt={image.alt || image.name || "Managed image"}
                 layout="fill"
                 objectFit="cover"
                 className="group-hover:scale-105 transition-transform duration-300"
@@ -78,12 +79,14 @@ export function ImageGallery({ images, onEdit, onDelete, isLoading }: ImageGalle
               />
             </div>
             <CardContent className="p-3">
-              <p className="text-sm font-medium truncate" title={image.filename || image.altText}>
-                {image.filename || image.altText || "Untitled Image"}
+              <p className="text-sm font-medium truncate" title={image.name || image.alt}>
+                {image.name || image.alt || "Untitled Image"}
               </p>
-              <p className="text-xs text-muted-foreground">
-                Uploaded: {formatDate(image.uploadedAt, 'MMM d, yyyy')}
-              </p>
+              {image.uploadedAt && (
+                <p className="text-xs text-muted-foreground">
+                  Uploaded: {formatDate(image.uploadedAt, 'MMM d, yyyy')}
+                </p>
+              )}
             </CardContent>
             <CardFooter className="p-3 pt-0 flex justify-end">
               <DropdownMenu>
@@ -99,7 +102,7 @@ export function ImageGallery({ images, onEdit, onDelete, isLoading }: ImageGalle
                     Edit Info
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <a href={image.url} target="_blank" rel="noopener noreferrer" download={image.filename}>
+                    <a href={image.image} target="_blank" rel="noopener noreferrer" download={image.name}>
                       <Download className="mr-2 h-4 w-4" />
                       Download
                     </a>

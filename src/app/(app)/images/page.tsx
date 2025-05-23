@@ -1,47 +1,74 @@
+
 "use client";
 
 import * as React from "react";
-import { Image as ImageIconLucide, PlusCircle, Search, UploadCloud } from "lucide-react";
+import { ImageIcon as ImageIconLucide, Search, UploadCloud } from "lucide-react";
 import type { ManagedImage } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/shared/page-header";
-import { useMockData } from "@/hooks/use-mock-data";
 import { ImageGallery } from "./components/image-gallery";
 import { ImageFormDialog } from "./components/image-form-dialog";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { useToast } from "@/hooks/use-toast";
 import { debounce } from "@/lib/utils";
+import axiosInstance from "@/lib/axiosInstance";
 
-const initialImages: ManagedImage[] = [
-  { id: "img1", url: "https://placehold.co/600x400.png?text=Pasta+Dish", altText: "Delicious pasta dish", filename: "pasta.png", uploadedAt: new Date(2023, 5, 10).toISOString() },
-  { id: "img2", url: "https://placehold.co/600x400.png?text=Restaurant+Interior", altText: "Cozy restaurant interior", filename: "interior.jpg", uploadedAt: new Date(2023, 5, 12).toISOString() },
-  { id: "img3", url: "https://placehold.co/600x400.png?text=Pizza+Slice", altText: "Close-up of a pizza slice", filename: "pizza.png", uploadedAt: new Date(2023, 5, 15).toISOString() },
-  { id: "img4", url: "https://placehold.co/600x400.png?text=Salad+Bowl", altText: "Fresh salad bowl", filename: "salad.jpg", uploadedAt: new Date(2023, 5, 18).toISOString() },
-];
+const ITEMS_PER_PAGE = 8;
 
 export default function ImagesPage() {
   const { toast } = useToast();
-  const {
-    paginatedData: images,
-    currentPage,
-    totalPages,
-    totalItems,
-    isLoading,
-    onPageChange,
-    onSearch,
-    addItem,
-    updateItem,
-    deleteItem,
-    getItem,
-    itemsPerPage,
-    originalDataCount
-  } = useMockData<ManagedImage>({ initialData: initialImages, itemsPerPage: 8 }); // Show more images per page
+  const [allImages, setAllImages] = React.useState<ManagedImage[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
 
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingImage, setEditingImage] = React.useState<ManagedImage | null>(null);
-  
-  const debouncedSearch = React.useCallback(debounce(onSearch, 300), [onSearch]);
+
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  const fetchImages = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // API for GET /image does not specify search query params
+      const response = await axiosInstance.get("/image");
+      setAllImages(response.data || []);
+    } catch (error) {
+      console.error("Failed to fetch images:", error);
+      toast({ title: "Error Fetching Images", description: "Could not load image data.", variant: "destructive" });
+      setAllImages([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  React.useEffect(() => {
+    fetchImages();
+  }, [fetchImages]);
+
+  const debouncedSearch = React.useCallback(debounce((term: string) => {
+    setSearchTerm(term);
+    setCurrentPage(1);
+  }, 300), []);
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    debouncedSearch(event.target.value);
+  };
+
+  const filteredImages = React.useMemo(() => {
+    if (!searchTerm) return allImages;
+    return allImages.filter(image =>
+      image.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      image.alt?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allImages, searchTerm]);
+
+  const paginatedImages = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredImages.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredImages, currentPage]);
+
+  const totalPages = Math.ceil(filteredImages.length / ITEMS_PER_PAGE);
 
   const handleAddImage = () => {
     setEditingImage(null);
@@ -49,7 +76,7 @@ export default function ImagesPage() {
   };
 
   const handleEditImage = (id: string) => {
-    const imageToEdit = getItem(id);
+    const imageToEdit = allImages.find(img => img.id === id);
     if (imageToEdit) {
       setEditingImage(imageToEdit);
       setIsFormOpen(true);
@@ -57,21 +84,39 @@ export default function ImagesPage() {
   };
 
   const handleSubmitForm = async (imageData: Omit<ManagedImage, 'id' | 'uploadedAt'> | ManagedImage) => {
+    // API requires: name, alt, image (URL). It's application/json.
+    const payload = {
+      name: imageData.name,
+      alt: imageData.alt || '', // Ensure alt is string, even if empty
+      image: imageData.image,
+    };
+
     try {
-      if ('id' in imageData) {
-        await updateItem(imageData.id, imageData);
-        toast({ title: "Image Updated", description: `Image ${imageData.filename || imageData.altText} has been updated.` });
-      } else {
-        // Simulate filename from URL if not provided
-        const filename = imageData.url.substring(imageData.url.lastIndexOf('/') + 1) || "image.png";
-        const newImageData = { ...imageData, filename: imageData.filename || filename };
-        await addItem(newImageData);
-        toast({ title: "Image Added", description: `Image ${newImageData.filename || newImageData.altText} has been added.` });
+      if ('id' in imageData && imageData.id) { // Editing
+        await axiosInstance.patch(`/image/${imageData.id}`, payload);
+        toast({ title: "Image Updated", description: `Image ${payload.name} has been updated.` });
+      } else { // Adding
+        await axiosInstance.post("/image", payload);
+        toast({ title: "Image Added", description: `Image ${payload.name} has been added.` });
       }
       setIsFormOpen(false);
       setEditingImage(null);
-    } catch (error) {
-      toast({ title: "Error", description: "An error occurred while saving the image.", variant: "destructive" });
+      fetchImages();
+    } catch (error: any) {
+      const apiError = error.response?.data?.message || "An error occurred while saving the image.";
+      toast({ title: "Error", description: apiError, variant: "destructive" });
+      console.error("Submit image error:", error.response?.data || error.message);
+    }
+  };
+
+  const handleDeleteImage = async (id: string) => {
+    try {
+      await axiosInstance.delete(`/image/${id}`);
+      toast({ title: "Image Deleted", description: "The image has been successfully deleted." });
+      fetchImages();
+    } catch (error: any) {
+      const apiError = error.response?.data?.message || "Could not delete the image.";
+      toast({ title: "Error Deleting Image", description: apiError, variant: "destructive" });
     }
   };
 
@@ -80,60 +125,60 @@ export default function ImagesPage() {
       <PageHeader title="Image Management" description="Manage all images used in the system.">
         <Button onClick={handleAddImage}>
           <UploadCloud className="mr-2 h-4 w-4" />
-          Upload Image
+          Add Image
         </Button>
       </PageHeader>
 
       <div className="flex items-center justify-between gap-2">
-         <div className="relative w-full max-w-sm">
+        <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search images (alt text, filename)..." 
+          <Input
+            placeholder="Search images (name, alt text)..."
             className="pl-10"
-            onChange={(e) => debouncedSearch(e.target.value)}
+            onChange={handleSearchChange}
           />
         </div>
       </div>
 
       <ImageGallery
-        images={images}
+        images={paginatedImages}
         onEdit={handleEditImage}
-        onDelete={async (id) => {
-          await deleteItem(id);
-          toast({ title: "Image Deleted", description: "The image has been successfully deleted." });
-        }}
-        isLoading={isLoading}
+        onDelete={handleDeleteImage}
+        isLoading={isLoading && allImages.length === 0}
       />
-      
-      {originalDataCount > 0 && totalPages > 0 && (
-         <DataTablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={onPageChange}
-            itemsPerPage={itemsPerPage}
-            totalItems={totalItems}
+
+      {allImages.length > 0 && totalPages > 0 && (
+        <DataTablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          itemsPerPage={ITEMS_PER_PAGE}
+          totalItems={filteredImages.length}
         />
       )}
-       { originalDataCount > 0 && totalItems === 0 && !isLoading && (
+      {allImages.length > 0 && filteredImages.length === 0 && !isLoading && (
         <p className="text-center text-muted-foreground py-4">No images found matching your search criteria.</p>
       )}
-      { originalDataCount === 0 && !isLoading && (
+      {allImages.length === 0 && !isLoading && (
         <div className="text-center py-10">
-            <ImageIconLucide className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-2 text-sm font-medium text-foreground">No images yet</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Get started by uploading a new image.</p>
-            <div className="mt-6">
-                <Button onClick={handleAddImage}>
-                    <UploadCloud className="mr-2 h-4 w-4" />
-                    Upload Image
-                </Button>
-            </div>
+          <ImageIconLucide className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-2 text-sm font-medium text-foreground">No images yet</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Get started by adding a new image.</p>
+          <div className="mt-6">
+            <Button onClick={handleAddImage}>
+              <UploadCloud className="mr-2 h-4 w-4" />
+              Add Image
+            </Button>
+          </div>
         </div>
       )}
 
       <ImageFormDialog
         isOpen={isFormOpen}
-        onOpenChange={setIsFormOpen}
+        onOpenChange={(isOpen) => {
+          setIsFormOpen(isOpen);
+          if (!isOpen) setEditingImage(null);
+        }}
         onSubmit={handleSubmitForm}
         image={editingImage}
       />

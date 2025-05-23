@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import type { ManagedImage } from "@/types";
-import Image from "next/image"; // To preview image
+import NextImage from "next/image"; // To preview image
 
 interface ImageFormDialogProps {
   isOpen: boolean;
@@ -32,57 +33,63 @@ interface ImageFormDialogProps {
   image?: ManagedImage | null;
 }
 
+// Schema based on API: name, alt (optional), image (URL)
 const formSchema = z.object({
-  url: z.string().url({ message: "Please enter a valid image URL." }),
-  altText: z.string().min(2, { message: "Alt text must be at least 2 characters." }).optional().or(z.literal('')),
-  filename: z.string().min(1, {message: "Filename is required."}).optional().or(z.literal('')),
+  image: z.string().url({ message: "Please enter a valid image URL." }),
+  alt: z.string().min(2, { message: "Alt text must be at least 2 characters." }).optional().or(z.literal('')),
+  name: z.string().min(1, { message: "Name/Filename is required." }),
 });
+
+type ImageFormValues = z.infer<typeof formSchema>;
 
 export function ImageFormDialog({ isOpen, onOpenChange, onSubmit, image }: ImageFormDialogProps) {
   const isEditing = !!image;
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<ImageFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      url: "",
-      altText: "",
-      filename: "",
+      image: "",
+      alt: "",
+      name: "",
     },
   });
-  
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const imageUrl = form.watch("url"); // For live preview
+  const imageUrlPreview = form.watch("image"); // For live preview
 
   React.useEffect(() => {
-    if (image) {
-      form.reset({
-        url: image.url,
-        altText: image.altText || "",
-        filename: image.filename || "",
-      });
-    } else {
-      form.reset({
-        url: "",
-        altText: "",
-        filename: "",
-      });
+    if (isOpen) { // Reset form when dialog opens or image data changes
+      if (image) {
+        form.reset({
+          image: image.image,
+          alt: image.alt || "",
+          name: image.name || "",
+        });
+      } else {
+        form.reset({
+          image: "",
+          alt: "",
+          name: "",
+        });
+      }
     }
   }, [image, form, isOpen]);
 
-  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleFormSubmit = async (values: ImageFormValues) => {
     setIsSubmitting(true);
     const submissionData: any = { ...values };
     if (isEditing && image) {
       submissionData.id = image.id;
-      submissionData.uploadedAt = image.uploadedAt;
+      // uploadedAt is not sent for update
     }
     await onSubmit(submissionData);
     setIsSubmitting(false);
+    // Parent (ImagesPage) will handle closing dialog
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      if(!open) form.reset();
+      if (!open && !isSubmitting) form.reset();
       onOpenChange(open);
     }}>
       <DialogContent className="sm:max-w-md">
@@ -93,10 +100,10 @@ export function ImageFormDialog({ isOpen, onOpenChange, onSubmit, image }: Image
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-2">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-2">
             <FormField
               control={form.control}
-              name="url"
+              name="image" // Maps to API 'image'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Image URL</FormLabel>
@@ -107,19 +114,19 @@ export function ImageFormDialog({ isOpen, onOpenChange, onSubmit, image }: Image
                 </FormItem>
               )}
             />
-            {imageUrl && (
+            {imageUrlPreview && (
               <div className="my-4 rounded-md border overflow-hidden aspect-video relative bg-muted">
-                <Image src={imageUrl} alt="Image preview" layout="fill" objectFit="contain" data-ai-hint="image preview" />
+                <NextImage src={imageUrlPreview} alt="Image preview" layout="fill" objectFit="contain" data-ai-hint="image preview" />
               </div>
             )}
             <FormField
               control={form.control}
-              name="altText"
+              name="name" // Maps to API 'name'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Alt Text (Optional)</FormLabel>
+                  <FormLabel>Name / Filename</FormLabel>
                   <FormControl>
-                    <Input placeholder="Descriptive text for accessibility" {...field} />
+                    <Input placeholder="e.g., delicious-pasta.jpg" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -127,12 +134,12 @@ export function ImageFormDialog({ isOpen, onOpenChange, onSubmit, image }: Image
             />
             <FormField
               control={form.control}
-              name="filename"
+              name="alt" // Maps to API 'alt'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Filename (Optional)</FormLabel>
+                  <FormLabel>Alt Text (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., delicious-pasta.jpg" {...field} />
+                    <Input placeholder="Descriptive text for accessibility" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
