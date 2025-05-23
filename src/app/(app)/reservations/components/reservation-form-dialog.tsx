@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -32,27 +33,28 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate as formatDateUtil } from "@/lib/utils"; // Renamed to avoid conflict
 import type { Reservation, Table as TableType } from "@/types";
 import { CalendarIcon } from "lucide-react";
+import { format } from 'date-fns';
 
 interface ReservationFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSubmit: (data: Omit<Reservation, 'id' | 'createdAt' | 'tableName'> | Reservation) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>; // Adjusted for flexibility in payload
   reservation?: Reservation | null;
-  tables: Pick<TableType, 'id' | 'name' | 'capacity'>[]; // Simplified table type for selection
+  tables: Pick<TableType, 'id' | 'name' | 'capacity'>[];
 }
 
 const formSchema = z.object({
   customerName: z.string().min(2, { message: "Customer name must be at least 2 characters." }),
-  customerPhone: z.string().min(7, { message: "Phone number seems too short." }), // Basic validation
-  customerEmail: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
+  customerPhone: z.string().min(7, { message: "Phone number seems too short." }),
   tableId: z.string().min(1, { message: "Please select a table." }),
   dateTime: z.date({ required_error: "Reservation date and time are required." }),
+  duration: z.coerce.number().min(30, { message: "Duration must be at least 30 minutes." }).max(360, { message: "Duration cannot exceed 360 minutes." }),
   guests: z.coerce.number().min(1, { message: "Number of guests must be at least 1." }),
-  status: z.enum(["confirmed", "pending", "cancelled", "completed"]),
   notes: z.string().optional(),
+  // Status removed as it's not settable via API create/update
 });
 
 export function ReservationFormDialog({ isOpen, onOpenChange, onSubmit, reservation, tables }: ReservationFormDialogProps) {
@@ -63,41 +65,37 @@ export function ReservationFormDialog({ isOpen, onOpenChange, onSubmit, reservat
     defaultValues: {
       customerName: "",
       customerPhone: "",
-      customerEmail: "",
       tableId: "",
       dateTime: new Date(),
+      duration: 120, // Default to 2 hours (120 minutes)
       guests: 1,
-      status: "pending",
       notes: "",
     },
   });
-  
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
     if (reservation) {
       form.reset({
-        customerName: reservation.customerName,
-        customerPhone: reservation.customerPhone,
-        customerEmail: reservation.customerEmail || "",
+        customerName: reservation.customerName || "", // API might not have this field directly
+        customerPhone: reservation.phone, // API has 'phone'
         tableId: reservation.tableId,
-        dateTime: new Date(reservation.dateTime),
-        guests: reservation.guests,
-        status: reservation.status,
-        notes: reservation.notes || "",
+        dateTime: reservation.dateTime ? new Date(reservation.dateTime as string) : new Date(`${reservation.date}T${reservation.hour}`),
+        duration: reservation.duration,
+        guests: reservation.people, // API has 'people'
+        notes: reservation.description || "", // API has 'description'
       });
     } else {
-      // Set default time to next hour for new reservations
       const nextHour = new Date();
       nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
       form.reset({
         customerName: "",
         customerPhone: "",
-        customerEmail: "",
         tableId: "",
         dateTime: nextHour,
+        duration: 120,
         guests: 1,
-        status: "pending",
         notes: "",
       });
     }
@@ -105,22 +103,31 @@ export function ReservationFormDialog({ isOpen, onOpenChange, onSubmit, reservat
 
   const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
-    // Convert date to ISO string before submitting
-    const submissionData: any = { 
-      ...values, 
-      dateTime: values.dateTime.toISOString() 
+
+    const apiPayload = {
+      tableId: values.tableId,
+      date: format(values.dateTime, "yyyy-MM-dd"),
+      hour: format(values.dateTime, "HH:mm"),
+      duration: values.duration,
+      people: values.guests,
+      phone: values.customerPhone,
+      description: values.notes ? `${values.notes}. Customer: ${values.customerName}` : `Customer: ${values.customerName}`,
     };
+
+    let submissionData: any = apiPayload;
+
     if (isEditing && reservation) {
-      submissionData.id = reservation.id;
-      submissionData.createdAt = reservation.createdAt;
+      submissionData = { ...apiPayload, id: reservation.id }; // For PATCH, include id
     }
-    await onSubmit(submissionData);
+
+    await onSubmit(submissionData); // onSubmit will decide POST or PATCH
     setIsSubmitting(false);
+    // onOpenChange(false) // Parent will handle closing
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
+      if (!open && !isSubmitting) {
         form.reset();
       }
       onOpenChange(open);
@@ -162,21 +169,9 @@ export function ReservationFormDialog({ isOpen, onOpenChange, onSubmit, reservat
                 )}
               />
             </div>
-            <FormField
-              control={form.control}
-              name="customerEmail"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Customer Email (Optional)</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="john.smith@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-             <FormField
+              <FormField
                 control={form.control}
                 name="dateTime"
                 render={({ field }) => (
@@ -193,7 +188,7 @@ export function ReservationFormDialog({ isOpen, onOpenChange, onSubmit, reservat
                             )}
                           >
                             {field.value ? (
-                              formatDate(field.value.toISOString(), "PPPp") // Format with time
+                              formatDateUtil(field.value.toISOString(), "PPPp")
                             ) : (
                               <span>Pick a date and time</span>
                             )}
@@ -206,31 +201,29 @@ export function ReservationFormDialog({ isOpen, onOpenChange, onSubmit, reservat
                           mode="single"
                           selected={field.value}
                           onSelect={(date) => {
-                            // Preserve time if date is selected, or set default time for new date
                             const newDateTime = date || new Date();
-                            if(field.value) { // If there was a previous value, try to keep its time
-                                newDateTime.setHours(field.value.getHours());
-                                newDateTime.setMinutes(field.value.getMinutes());
-                            } else { // Default time for a newly picked date (e.g. noon)
-                                newDateTime.setHours(12,0,0,0);
+                            if (field.value) {
+                              newDateTime.setHours(field.value.getHours());
+                              newDateTime.setMinutes(field.value.getMinutes());
+                            } else {
+                              newDateTime.setHours(12, 0, 0, 0);
                             }
                             field.onChange(newDateTime);
                           }}
                           initialFocus
                         />
-                        {/* Simple Time Picker - replace with a better one if needed */}
                         <div className="p-2 border-t">
-                           <Input 
-                             type="time"
-                             value={field.value ? `${String(field.value.getHours()).padStart(2,'0')}:${String(field.value.getMinutes()).padStart(2,'0')}` : "12:00"}
-                             onChange={(e) => {
-                                const [hours, minutes] = e.target.value.split(':').map(Number);
-                                const newDate = field.value ? new Date(field.value) : new Date();
-                                newDate.setHours(hours, minutes);
-                                field.onChange(newDate);
-                             }}
-                             className="w-full"
-                           />
+                          <Input
+                            type="time"
+                            value={field.value ? `${String(field.value.getHours()).padStart(2, '0')}:${String(field.value.getMinutes()).padStart(2, '0')}` : "12:00"}
+                            onChange={(e) => {
+                              const [hours, minutes] = e.target.value.split(':').map(Number);
+                              const newDate = field.value ? new Date(field.value) : new Date();
+                              newDate.setHours(hours, minutes);
+                              field.onChange(newDate);
+                            }}
+                            className="w-full"
+                          />
                         </div>
                       </PopoverContent>
                     </Popover>
@@ -240,7 +233,7 @@ export function ReservationFormDialog({ isOpen, onOpenChange, onSubmit, reservat
               />
               <FormField
                 control={form.control}
-                name="guests"
+                name="guests" // maps to 'people' in API
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Number of Guests</FormLabel>
@@ -252,14 +245,15 @@ export function ReservationFormDialog({ isOpen, onOpenChange, onSubmit, reservat
                 )}
               />
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-               <FormField
+              <FormField
                 control={form.control}
                 name="tableId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Table</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a table" />
@@ -279,31 +273,22 @@ export function ReservationFormDialog({ isOpen, onOpenChange, onSubmit, reservat
               />
               <FormField
                 control={form.control}
-                name="status"
+                name="duration" // API field 'duration'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="confirmed">Confirmed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Duration (minutes)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="30" min="30" placeholder="e.g., 120" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+
             <FormField
               control={form.control}
-              name="notes"
+              name="notes" // maps to 'description' in API (with customerName appended)
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notes (Optional)</FormLabel>
@@ -319,7 +304,7 @@ export function ReservationFormDialog({ isOpen, onOpenChange, onSubmit, reservat
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                 {isSubmitting ? (
+                {isSubmitting ? (
                   <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -334,3 +319,4 @@ export function ReservationFormDialog({ isOpen, onOpenChange, onSubmit, reservat
     </Dialog>
   );
 }
+

@@ -1,77 +1,77 @@
 
 export interface User {
   id: string;
-  fullName: string; // Changed from name
-  username: string; // Changed from email for login, actual email might be separate or same as username
-  role: 'admin' | 'staff' | string; // Allow string for flexibility if API returns other roles
-  password?: string; // Only for creation/update, not for display
-  confirm_password?: string; // Only for creation/update
-  createdAt?: string; // ISO date string, from API
+  fullName: string;
+  username: string;
+  role: 'admin' | 'staff' | string;
+  password?: string;
+  confirm_password?: string;
+  createdAt?: string;
 }
 
 export interface Table {
   id: string;
   name: string;
-  description?: string; // Added
+  description?: string;
   capacity: number;
-  photo?: string; // Added, URL to image
-  status?: 'available' | 'occupied' | 'reserved' | 'maintenance'; // Keep for UI if API returns it on GET
-  createdAt?: string; // ISO date string, from API
+  photo?: string;
+  status?: 'available' | 'occupied' | 'reserved' | 'maintenance' | string;
+  createdAt?: string;
 }
 
 export interface Reservation {
   id: string;
   tableId: string;
-  tableName?: string; // For display convenience, if joined by backend or fetched separately
-  date: string; // Format: YYYY-MM-DD
-  hour: string; // Format: HH:MM
-  duration: number; // in minutes or hours, API dependent
-  people: number;
-  phone: string;
-  description?: string; // Was notes
-  // Fields removed based on API: customerName, customerEmail (could be part of description or separate if API changes)
-  status?: 'confirmed' | 'pending' | 'cancelled' | 'completed' | string; // From API on GET
-  createdAt?: string; // ISO date string, from API
+  tableName?: string;
+  date: string; // Format: YYYY-MM-DD from API
+  hour: string; // Format: HH:MM from API
+  duration: number; // in minutes from API
+  people: number; // from API
+  phone: string; // from API
+  description?: string; // from API (might include customer name)
+  status?: 'confirmed' | 'pending' | 'cancelled' | 'completed' | string;
+  createdAt?: string;
 
-  // For form binding, might be different from submission
-  customerName?: string; // Keep for form if needed, then map to description or handle
-  customerEmail?: string; // Keep for form
-  dateTime?: string | Date; // For form date picker, to be converted
+  // UI specific fields, not directly sent/received unless mapped
+  customerName?: string;
+  dateTime?: string | Date;
 }
 
+// Corresponds to API: image (URL), title, description, fee (price), available (boolean), categoryId
 export interface MenuItem {
   id: string;
-  image?: string; // Was imageUrl
-  title: string; // Was name
+  image?: string; // URL for the item's image
+  title: string;
   description: string;
-  fee: number; // Was price
-  available: boolean; // Added
+  fee: number; // Price of the item
+  available: boolean; // Availability status
   categoryId: string;
-  categoryName?: string; // For display convenience
-  createdAt?: string; // ISO date string, from API
-  // tags removed as not in API spec
+  categoryName?: string; // To be populated client-side
+  createdAt?: string; // API might provide this
 }
 
+// Corresponds to API: name, icon (URL)
 export interface Category {
   id: string;
   name: string;
-  icon?: string; // Changed from description (URL to icon image)
-  createdAt?: string; // ISO date string, from API
+  icon?: string; // URL to icon image
+  createdAt?: string; // API might provide this
+  // description field removed as it's not in API spec
 }
 
+// Corresponds to API: name, alt, image (URL or base64 data)
 export interface ManagedImage {
   id: string;
-  name: string; // Was filename
-  alt?: string; // Was altText
-  image: string; // Was url, this is the image URL or base64 data based on API behavior
-  uploadedAt?: string; // From API, was uploadedAt
+  name: string; // This will be the filename or a user-defined name
+  alt?: string; // Alt text for the image
+  image: string; // URL of the image
+  uploadedAt?: string; // Provided by API on GET
 }
 
 // API Auth Types
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
-  // Assuming API might also return user details on login for convenience
   user?: {
     id: string;
     fullName: string;
