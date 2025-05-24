@@ -1,12 +1,13 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { format } from 'date-fns';
+import { format as dateFnsFormat } from 'date-fns';
+import { faIR } from 'date-fns/locale';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Mock data generation utility
+// Mock data generation utility (no longer primarily used, but keep for any minor utility)
 let mockIdCounter = 0;
 export function generateMockId(): string {
   mockIdCounter++;
@@ -16,15 +17,21 @@ export function generateMockId(): string {
 // Date formatting utility
 export function formatDate(dateString: string, formatString: string = 'PPpp'): string {
   try {
-    return format(new Date(dateString), formatString);
+    return dateFnsFormat(new Date(dateString), formatString, { locale: faIR });
   } catch (error) {
-    return "Invalid Date";
+    return "تاریخ نامعتبر"; // Invalid Date
   }
 }
 
 // Price formatting
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+export function formatCurrency(amount: number, currency: string = 'IRR'): string {
+  // For IRR, it's common to not show decimal places.
+  // And use 'ریال' or 'تومان' (though تومان is 1/10 of IRR).
+  // Let's assume the amount is in Rials.
+  if (currency === 'IRR') {
+    return new Intl.NumberFormat('fa-IR', { style: 'currency', currency: 'IRR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+  }
+  return new Intl.NumberFormat('fa-IR', { style: 'currency', currency }).format(amount);
 }
 
 // Debounce function

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -16,12 +17,12 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   Users,
-  Archive, // Using Archive for Tables as 'Table' icon might not exist or be suitable
+  Archive,
   CalendarCheck,
   BookOpenText,
   Image as ImageIcon,
   LogOut,
-  ChefHat, // Placeholder for App Logo/Name
+  ChefHat,
 } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { useRouter } from "next/navigation";
@@ -33,12 +34,12 @@ interface AppSidebarProps {
 }
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/users", label: "Users", icon: Users },
-  { href: "/tables", label: "Tables", icon: Archive },
-  { href: "/reservations", label: "Reservations", icon: CalendarCheck },
-  { href: "/menu", label: "Menu", icon: BookOpenText },
-  { href: "/images", label: "Images", icon: ImageIcon },
+  { href: "/dashboard", label: "داشبورد", icon: LayoutDashboard },
+  { href: "/users", label: "کاربران", icon: Users },
+  { href: "/tables", label: "میزها", icon: Archive },
+  { href: "/reservations", label: "رزروها", icon: CalendarCheck },
+  { href: "/menu", label: "منو", icon: BookOpenText },
+  { href: "/images", label: "تصاویر", icon: ImageIcon },
 ];
 
 export default function AppSidebar({ user }: AppSidebarProps) {
@@ -52,7 +53,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
   };
 
   const getUserInitials = (name: string) => {
-    if (!name) return 'U';
+    if (!name) return 'ک'; // For کاربر (User)
     const parts = name.split(' ');
     if (parts.length > 1) {
       return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
@@ -61,11 +62,11 @@ export default function AppSidebar({ user }: AppSidebarProps) {
   }
 
   return (
-    <Sidebar collapsible="icon" variant="sidebar" className="border-r">
+    <Sidebar collapsible="icon" variant="sidebar" className="border-l right-0"> {/* border-r becomes border-l for RTL */}
       <SidebarHeader className="p-4 flex items-center gap-2 justify-between">
         <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
           <ChefHat className="h-8 w-8 text-primary" />
-          <h1 className="text-xl font-semibold text-sidebar-foreground">Reservista</h1>
+          <h1 className="text-xl font-semibold text-sidebar-foreground">یووتاب</h1>
         </div>
         <SidebarTrigger className="md:hidden" />
       </SidebarHeader>
@@ -90,23 +91,23 @@ export default function AppSidebar({ user }: AppSidebarProps) {
       <SidebarFooter className="p-4 border-t border-sidebar-border">
         <div className="flex items-center gap-3 group-data-[collapsible=icon]:hidden">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={`https://placehold.co/40x40.png?text=${getUserInitials(user?.name || 'User')}`} alt={user?.name} data-ai-hint="avatar profile" />
-            <AvatarFallback>{getUserInitials(user?.name || 'User')}</AvatarFallback>
+            <AvatarImage src={`https://placehold.co/40x40.png?text=${getUserInitials(user?.fullName || 'کاربر')}`} alt={user?.fullName} data-ai-hint="avatar profile" />
+            <AvatarFallback>{getUserInitials(user?.fullName || 'کاربر')}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-sidebar-foreground">{user?.name}</span>
-            <span className="text-xs text-sidebar-foreground/70">{user?.email}</span>
+            <span className="text-sm font-medium text-sidebar-foreground">{user?.fullName}</span>
+            <span className="text-xs text-sidebar-foreground/70">{user?.username}</span>
           </div>
         </div>
         <Button
           variant="ghost"
           onClick={handleLogout}
           className="w-full justify-start mt-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
-          aria-label="Logout"
-          title="Logout"
+          aria-label="خروج"
+          title="خروج"
         >
-          <LogOut className="mr-2 h-5 w-5 group-data-[collapsible=icon]:mr-0" />
-          <span className="group-data-[collapsible=icon]:hidden">Logout</span>
+          <LogOut className="ml-2 h-5 w-5 group-data-[collapsible=icon]:ml-0" /> {/* mr-2 becomes ml-2 */}
+          <span className="group-data-[collapsible=icon]:hidden">خروج</span>
         </Button>
       </SidebarFooter>
     </Sidebar>

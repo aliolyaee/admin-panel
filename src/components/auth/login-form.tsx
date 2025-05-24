@@ -21,11 +21,9 @@ import { useToast } from "@/hooks/use-toast";
 import { login } from "@/lib/auth";
 import { LogIn } from "lucide-react";
 
-// API expects 'username', form uses 'email'. We'll use email as username.
 const formSchema = z.object({
-  // email: z.string().email({ message: "Invalid email address." }), // This will be sent as 'username'
-  email: z.string().min(1, { message: "username is required." }), // This will be sent as 'username'
-  password: z.string().min(1, { message: "Password is required." }), // API spec doesn't state min length for login
+  email: z.string().email({ message: "آدرس ایمیل نامعتبر است." }),
+  password: z.string().min(1, { message: "رمز عبور الزامی است." }),
 });
 
 export function LoginForm() {
@@ -44,18 +42,17 @@ export function LoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // The login function in auth.ts handles mapping 'email' to 'username' for the API
       await login(values.email, values.password);
       toast({
-        title: "Login Successful",
-        description: "Welcome back!",
+        title: "ورود موفقیت‌آمیز",
+        description: "خوش آمدید!",
       });
       router.push("/dashboard");
-      router.refresh(); // Ensure layout re-renders with auth state
+      router.refresh();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+      const errorMessage = error instanceof Error ? error.message : "خطای ناشناخته رخ داد.";
       toast({
-        title: "Login Failed",
+        title: "ورود ناموفق",
         description: errorMessage,
         variant: "destructive",
       });
@@ -67,9 +64,9 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader>
-        <CardTitle className="text-3xl font-bold text-center">Reservista Admin</CardTitle>
+        <CardTitle className="text-3xl font-bold text-center">پنل مدیریت یووتاب</CardTitle>
         <CardDescription className="text-center">
-          Sign in to manage your restaurant reservations.
+          برای مدیریت رزروهای رستوران خود وارد شوید.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -80,9 +77,9 @@ export function LoginForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email (as Username)</FormLabel>
+                  <FormLabel>ایمیل (به عنوان نام کاربری)</FormLabel>
                   <FormControl>
-                    <Input type="text" placeholder="admin@example.com" {...field} />
+                    <Input dir="ltr" type="email" placeholder="admin@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -93,9 +90,9 @@ export function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>رمز عبور</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
+                    <Input dir="ltr" type="password" placeholder="••••••••" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -103,14 +100,14 @@ export function LoginForm() {
             />
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin -mr-1 ml-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> {/* Adjusted margins for icon */}
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               ) : (
-                <LogIn className="mr-2 h-4 w-4" />
+                <LogIn className="ml-2 h-4 w-4" /> /* mr-2 becomes ml-2 */
               )}
-              {isLoading ? "Signing In..." : "Sign In"}
+              {isLoading ? "در حال ورود..." : "ورود"}
             </Button>
           </form>
         </Form>

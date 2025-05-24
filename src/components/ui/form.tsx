@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -80,7 +81,7 @@ const FormItem = React.forwardRef<
 
   return (
     <FormItemContext.Provider value={{ id }}>
-      <div ref={ref} className={cn("space-y-2", className)} {...props} />
+      <div ref={ref} className={cn("space-y-2 text-right", className)} {...props} /> {/* Added text-right for RTL */}
     </FormItemContext.Provider>
   )
 })
@@ -95,7 +96,7 @@ const FormLabel = React.forwardRef<
   return (
     <Label
       ref={ref}
-      className={cn(error && "text-destructive", className)}
+      className={cn(error && "text-destructive", "text-right", className)} // Added text-right for RTL
       htmlFor={formItemId}
       {...props}
     />
@@ -135,7 +136,7 @@ const FormDescription = React.forwardRef<
     <p
       ref={ref}
       id={formDescriptionId}
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm text-muted-foreground text-right", className)} // Added text-right for RTL
       {...props}
     />
   )
@@ -157,7 +158,7 @@ const FormMessage = React.forwardRef<
     <p
       ref={ref}
       id={formMessageId}
-      className={cn("text-sm font-medium text-destructive", className)}
+      className={cn("text-sm font-medium text-destructive text-right", className)} // Added text-right for RTL
       {...props}
     >
       {body}

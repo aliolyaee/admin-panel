@@ -188,7 +188,10 @@ export default function ReservationsPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={filterStatus} onValueChange={(value) => { setFilterStatus(value); setCurrentPage(1); }}>
             <SelectTrigger className="w-full md:w-[180px]">
-              <SelectValue placeholder="Filter by status" />
+
+              <SelectValue>
+                <span>Filter by status</span>
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
