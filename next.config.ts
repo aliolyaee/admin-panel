@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'api-youtaab.shirazidev.ir',
+        hostname: 'api.menu.baniantourism.com',
         port: '',
         pathname: '/**',
       },
