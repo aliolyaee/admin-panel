@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import Link from 'next/link';
 import { Users, Archive, CalendarCheck, BookOpenText, BarChart3, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
+import LastLogin from '@/components/user';
 
 export const metadata: Metadata = {
   title: 'داشبورد - پنل مدیریت یووتاب',
@@ -83,7 +84,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center h-64 bg-muted/30 rounded-md">
             <Image src="https://placehold.co/600x300.png?text=Chart+Placeholder" alt="نمودار جایگزین" data-ai-hint="chart analytics" width={600} height={300} className="opacity-50" />
-            <p className="mt-4 text-muted-foreground text-sm">نمودار رزروها به زودی اضافه می‌شود</p>
           </CardContent>
         </Card>
       </div>
@@ -91,27 +91,12 @@ export default function DashboardPage() {
       {/* Recent Activity Placeholder */}
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>فعالیت‌های اخیر</CardTitle>
-          <CardDescription>آخرین به‌روزرسانی‌ها و اقدامات در سیستم.</CardDescription>
+          <CardTitle>فعالیت‌ اخیر شما</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">
-            {[1, 2, 3].map(item => (
-              <li key={item} className="flex items-center justify-between p-3 bg-muted/20 rounded-md">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-full">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">کاربر جدید 'جواد جوادی' ثبت‌نام کرد.</p>
-                    <p className="text-xs text-muted-foreground">۲ دقیقه پیش</p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm">مشاهده</Button>
-              </li>
-            ))}
+            <LastLogin />
           </ul>
-          <p className="mt-4 text-center text-muted-foreground text-sm">فید فعالیت‌ها به زودی اضافه می‌شود.</p>
         </CardContent>
       </Card>
 
